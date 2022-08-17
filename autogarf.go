@@ -2,8 +2,8 @@ package main
 
 import (
 	"log"
-	"os"
 	"path/filepath"
+	"time"
 )
 
 var OS string
@@ -17,27 +17,25 @@ func main() {
 	directory := filepath.FromSlash(config.ClientDir)
 
 	var clients = []*Client{}
-
-	clients = getClients(directory, clients)
+	clients = getClientDirectories(directory, clients)
 
 	for _, client := range clients {
-		log.Printf("Client -\n\tName: %s\n\tDirectory: %s", client.name, client.directory)
+		client.populateStatementList()
 	}
 
-}
-
-func getClients(directory string, clients []*Client) []*Client {
-	client_dir, err := os.Open(directory)
-	if err != nil {
-		log.Fatalf("failed opening directory: %s", err)
+	// Copy the files
+	for _, client := range clients {
+		log.Printf("%s", client.name)
+		// for _, statement := range client.statements {
+		// 	log.Printf("%s", statement)
+		// }
+		latestFileName := client.getLatestFileName()
+		newFileName := client.getNewFileName()
+		if client.latestStatementDate.After(time.Now()) {
+			log.Printf("The most recent statement is already the most current. Not copying: %s", latestFileName)
+		} else {
+			log.Printf("Duplicating the most recent statement \"%s\" to have this month's date \"%s\"", latestFileName, newFileName)
+			copyFile(client.getCurrentFilePath(), client.getNewFilePath())
+		}
 	}
-	defer client_dir.Close()
-
-	directories, err := client_dir.Readdirnames(0)
-
-	for _, dir_name := range directories {
-		client_path := filepath.Join(directory, dir_name)
-		clients = append(clients, newClient(dir_name, client_path))
-	}
-	return clients
 }

@@ -10,6 +10,7 @@ type conf struct {
 	ClientDir string `yaml:"client-directory"`
 }
 
+// Reads the config file and returns the config struct
 func readConfig(filename string) (*conf, error) {
 	yamlFile, err := ioutil.ReadFile(filename)
 	if err != nil {
