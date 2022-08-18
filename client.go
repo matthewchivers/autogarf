@@ -11,11 +11,15 @@ import (
 )
 
 type Client struct {
-	name                   string
-	directory              string
-	statements             []string
-	incumbentStatementName string
-	incumbentStatementDate time.Time
+	name                        string
+	directory                   string
+	statements                  []Statement
+	incumbentStatementNameIndex *int
+}
+
+type Statement struct {
+	fileName string
+	date     time.Time
 }
 
 // Creates a new client
@@ -25,8 +29,15 @@ func newClient(name, directory string) *Client {
 	return &c
 }
 
+// Add statement to client
+func (c *Client) newStatement(statement Statement) {
+	c.statements = append(c.statements, statement)
+	log.Printf("Found statement: \"%s\" with date \"%s\" - added to list for client \"%s\"", statement.fileName, statement.date.Format("2006-01-02"), c.name)
+}
+
 // Returns a list of client directories
 func getClientDirectories(directory string, clients []*Client) []*Client {
+	log.Printf("Getting client directories:")
 	client_dir, err := os.Open(directory)
 	if err != nil {
 		log.Fatalf("failed opening directory: %s", err)
@@ -39,11 +50,12 @@ func getClientDirectories(directory string, clients []*Client) []*Client {
 		client_path := filepath.Join(directory, dir_name)
 		clients = append(clients, newClient(dir_name, client_path))
 	}
+	log.Printf("Finished getting client directories:")
 	return clients
 }
 
 // Populates the statement list
-func (c *Client) populateStatementList() ([]string, error) {
+func (c *Client) populateStatementList() ([]Statement, error) {
 	client_dir, err := os.Open(c.directory)
 	if err != nil {
 		return nil, err
@@ -55,10 +67,14 @@ func (c *Client) populateStatementList() ([]string, error) {
 		return nil, err
 	}
 
-	for _, file_name := range files {
-		if strings.HasPrefix(file_name, "Statement") && strings.HasSuffix(file_name, ".docx") {
-			file_name = strings.Replace(file_name, "  ", " ", -1) // Correct double-spaces in file name
-			c.statements = append(c.statements, file_name)
+	for _, raw_file_name := range files {
+		if strings.HasPrefix(raw_file_name, "Statement") && strings.HasSuffix(raw_file_name, ".docx") {
+			file_name := correctDoubleSpaces(raw_file_name)
+			fileDate, err := getFileDate(file_name)
+			if err != nil {
+				return nil, err
+			}
+			c.newStatement(Statement{raw_file_name, fileDate})
 		}
 	}
 	return c.statements, nil
@@ -66,28 +82,29 @@ func (c *Client) populateStatementList() ([]string, error) {
 
 // Returns the incumbent statement file name
 func (c *Client) getIncumbentFileName() string {
-	if c.incumbentStatementName == "" {
-		incumbentStatmentIndex := 0
-		incumbentStatementDate := time.Now().AddDate(-100, 0, 0) // 100 years ago
-		for i, statementName := range c.statements {
-			extractedDate, err := extractDate(statementName)
-			if err != nil {
-				log.Fatal(err)
-			}
-			statementDate := convertStringToDate(extractedDate)
-			if statementDate.After(incumbentStatementDate) {
-				incumbentStatementDate = statementDate
-				incumbentStatmentIndex = i
+	if c.incumbentStatementNameIndex == nil {
+		c.incumbentStatementNameIndex = new(int)
+		*c.incumbentStatementNameIndex = 0
+		for i, statement := range c.statements {
+			if statement.date.After(c.statements[*c.incumbentStatementNameIndex].date) {
+				*c.incumbentStatementNameIndex = i
 			}
 		}
-		c.incumbentStatementName = c.statements[incumbentStatmentIndex]
-		c.incumbentStatementDate = incumbentStatementDate
 	}
-	return c.incumbentStatementName
+	return c.statements[*c.incumbentStatementNameIndex].fileName
 }
 
 // Extracts the date from the statement file name
-func extractDate(statementName string) (string, error) {
+func getFileDate(statementName string) (time.Time, error) {
+	dateString, err := extractDateString(statementName)
+	if err != nil {
+		return time.Now(), err
+	}
+	return convertStringToDate(dateString), nil
+}
+
+// Extracts the date string from the statement file name
+func extractDateString(statementName string) (string, error) {
 	post := strings.Split(statementName, " - ")[1]
 	date := strings.Split(post, ".")[0]
 	components := strings.Split(date, " ")
@@ -110,12 +127,14 @@ func convertStringToDate(date string) time.Time {
 // New file name will always be for the next month.
 // e.g. If generating any time in March, the new file name will be for April.
 func (c *Client) getNewFileName() string {
-	hyphenSplit := strings.Split(c.incumbentStatementName, " - ")
+	incumbentFileName := c.getIncumbentFileName()
+	formattedIncumbentFileName := correctDoubleSpaces(incumbentFileName)
+	hyphenSplit := strings.Split(formattedIncumbentFileName, " - ")
 	filePrefix := hyphenSplit[0]
 	fileSuffix := strings.Split(hyphenSplit[1], ".")[1]
 
 	firstOfCurrentMonth := time.Date(time.Now().Year(), time.Now().Month(), 1, 0, 0, 0, 0, time.UTC)
-	lastOfNextMonth := firstOfCurrentMonth.AddDate(0, 2, -1)
+	lastOfNextMonth := firstOfCurrentMonth.AddDate(0, 1, -1)
 	return fmt.Sprintf("%s - %s.%s", filePrefix, lastOfNextMonth.Format("02 Jan 06"), fileSuffix)
 }
 
@@ -126,5 +145,10 @@ func (c *Client) getNewFilePath() string {
 
 // Returns the entire path to the incumbent statement file
 func (c *Client) getIncumbentFilePath() string {
-	return filepath.Join(c.directory, c.incumbentStatementName)
+	return filepath.Join(c.directory, c.getIncumbentFileName())
+}
+
+// Removes double spaces from a string
+func correctDoubleSpaces(fileName string) string {
+	return strings.Join(strings.Fields(fileName), " ")
 }
