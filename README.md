@@ -16,7 +16,7 @@ Let's say your directory structure looks something like this:
 
 ```
 C:
----- user
+|---- user
     |---- documents
          |---- project
               |---- clients
@@ -30,23 +30,25 @@ C:
                         |---- Statement 30 Apr 22.docx
                         |---- Statement 31 May 22.docx
 ```
-Within the `clients` directory there area  series of directories (`client A`, `client B`, `client C`), each of these holds a Statement file.
+Within the `clients` directory there are a  series of directories (`client A`, `client B`, `client C`), each of these holds statement file(s).
 
-The "top" directory in this instance is the "clients" directory, but it could be called something else.
+The "top" directory (the one we're interested in) in this instance is the "clients" directory, but it could be called something else.
 
 In this example, the directory path will look like `C:\user\documents\project\clients`.
 
-This is the directory that needs to be specified such that the program can recognise it and perform tasks on all the folders / files inside it.
+This is the directory that needs to be specified so that the program can recognise it and perform tasks on all the folders / files inside it.
 
 #### Step 2.1 - Edit the config 
-Edit the file `config.yaml` (which should already be in the same directory as `autogarf.exe`)
+Edit the file `config.yaml` (which should already be in the same directory as `autogarf.exe`) to include the directory path.
 
-The file should have just one line when finished:
+The file should have just one line, and will look something like this when finished:
 
 ```
 client-directory: 'C:\user\documents\project\clients'
 ```
 > Make sure you use single quote to surround the directory path rather than backticks or double quotes.
+
+Save the file so that this configuration can be used by the program.
 
 ### Step 3 - Run the program
 
