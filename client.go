@@ -11,11 +11,11 @@ import (
 )
 
 type Client struct {
-	name                string
-	directory           string
-	statements          []string
-	latestStatementName string
-	latestStatementDate time.Time
+	name                   string
+	directory              string
+	statements             []string
+	incumbentStatementName string
+	incumbentStatementDate time.Time
 }
 
 // Creates a new client
@@ -64,26 +64,26 @@ func (c *Client) populateStatementList() ([]string, error) {
 	return c.statements, nil
 }
 
-// Returns the latest statement file name
-func (c *Client) getLatestFileName() string {
-	if c.latestStatementName == "" {
-		latestStatmentIndex := 0
-		latestStatementDate := time.Now().AddDate(-100, 0, 0) // 100 years ago
+// Returns the incumbent statement file name
+func (c *Client) getIncumbentFileName() string {
+	if c.incumbentStatementName == "" {
+		incumbentStatmentIndex := 0
+		incumbentStatementDate := time.Now().AddDate(-100, 0, 0) // 100 years ago
 		for i, statementName := range c.statements {
 			extractedDate, err := extractDate(statementName)
 			if err != nil {
 				log.Fatal(err)
 			}
 			statementDate := convertStringToDate(extractedDate)
-			if statementDate.After(latestStatementDate) {
-				latestStatementDate = statementDate
-				latestStatmentIndex = i
+			if statementDate.After(incumbentStatementDate) {
+				incumbentStatementDate = statementDate
+				incumbentStatmentIndex = i
 			}
 		}
-		c.latestStatementName = c.statements[latestStatmentIndex]
-		c.latestStatementDate = latestStatementDate
+		c.incumbentStatementName = c.statements[incumbentStatmentIndex]
+		c.incumbentStatementDate = incumbentStatementDate
 	}
-	return c.latestStatementName
+	return c.incumbentStatementName
 }
 
 // Extracts the date from the statement file name
@@ -106,20 +106,25 @@ func convertStringToDate(date string) time.Time {
 	return t
 }
 
+// Creates new file name for the new statement
+// New file name will always be for the next month.
+// e.g. If generating any time in March, the new file name will be for April.
 func (c *Client) getNewFileName() string {
-	hyphenSplit := strings.Split(c.latestStatementName, " - ")
+	hyphenSplit := strings.Split(c.incumbentStatementName, " - ")
 	filePrefix := hyphenSplit[0]
 	fileSuffix := strings.Split(hyphenSplit[1], ".")[1]
 
 	firstOfCurrentMonth := time.Date(time.Now().Year(), time.Now().Month(), 1, 0, 0, 0, 0, time.UTC)
-	lastOfCurrentMonth := firstOfCurrentMonth.AddDate(0, 1, -1)
-	return fmt.Sprintf("%s - %s.%s", filePrefix, lastOfCurrentMonth.Format("02 Jan 06"), fileSuffix)
+	lastOfNextMonth := firstOfCurrentMonth.AddDate(0, 2, -1)
+	return fmt.Sprintf("%s - %s.%s", filePrefix, lastOfNextMonth.Format("02 Jan 06"), fileSuffix)
 }
 
+// Returns the entire path to the new statement file
 func (c *Client) getNewFilePath() string {
 	return filepath.Join(c.directory, c.getNewFileName())
 }
 
-func (c *Client) getCurrentFilePath() string {
-	return filepath.Join(c.directory, c.latestStatementName)
+// Returns the entire path to the incumbent statement file
+func (c *Client) getIncumbentFilePath() string {
+	return filepath.Join(c.directory, c.incumbentStatementName)
 }
