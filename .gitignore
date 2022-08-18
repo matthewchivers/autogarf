@@ -16,5 +16,6 @@
 
 # Config file
 config.yaml
+!/config/config.yaml
 logs/
 bin/ 
