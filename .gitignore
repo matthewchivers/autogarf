@@ -16,4 +16,5 @@
 
 # Config file
 config.yaml
-logs
+logs/
+bin/ 
